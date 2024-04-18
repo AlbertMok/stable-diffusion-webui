@@ -181,6 +181,7 @@ except Exception:
 def setup_model():
     """called once at startup to do various one-time tasks related to SD models"""
 
+    # if the model path doesn't exist, create it,else do nothing
     os.makedirs(model_path, exist_ok=True)
 
     enable_midas_autodownload()
