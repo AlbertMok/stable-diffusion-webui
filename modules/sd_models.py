@@ -193,6 +193,9 @@ def checkpoint_tiles(use_short=False):
 
 
 def list_models():
+    """
+    show the models in the spec directory
+    """
     checkpoints_list.clear()
     checkpoint_aliases.clear()
 
