@@ -22,9 +22,15 @@ def wrap_gradio_gpu_call(func, extra_outputs=None):
     def f(*args, **kwargs):
 
         # if the first argument is a string that says "task(...)", it is treated as a job id
-        if args and type(args[0]) == str and args[0].startswith("task(") and args[0].endswith(")"):
+        if (
+            args
+            and type(args[0]) == str
+            and args[0].startswith("task(")
+            and args[0].endswith(")")
+        ):
             id_task = args[0]
             progress.add_task_to_queue(id_task)
+
         else:
             id_task = None
 
@@ -42,18 +48,30 @@ def wrap_gradio_gpu_call(func, extra_outputs=None):
 
         return res
 
+    # 若排队等到可以执行任务，则进入第二层包裹函数wrap_gradio_call
+    # 队列的实现有漏洞，实际并不能解决多人使用问题。这是因为传递给队列的inputs并不包含全部信息，
+    # 例如就不包含模型名，一旦另外的两个用户切换模型，就会发生冲突（关于模型的加载会在下一篇分析）
+    # 而且生成过程也与一些插件有关，例如插件需要加载模型（如controlnet），就容易破坏队列里任务的参数
     return wrap_gradio_call(f, extra_outputs=extra_outputs, add_stats=True)
 
 
 def wrap_gradio_call(func, extra_outputs=None, add_stats=False):
     @wraps(func)
     def f(*args, extra_outputs_array=extra_outputs, **kwargs):
-        run_memmon = shared.opts.memmon_poll_rate > 0 and not shared.mem_mon.disabled and add_stats
+        run_memmon = (
+            shared.opts.memmon_poll_rate > 0
+            and not shared.mem_mon.disabled
+            and add_stats
+        )
+
         if run_memmon:
             shared.mem_mon.monitor()
+
+        # Performance counter for benchmarking.
         t = time.perf_counter()
 
         try:
+            # 它主要是收集性能信息，比如占用的cpu时间、内存、显存等，这些信息插入到html页面中。
             res = list(func(*args, **kwargs))
         except Exception as e:
             # When printing out our debug argument list,
@@ -69,10 +87,12 @@ def wrap_gradio_call(func, extra_outputs=None, add_stats=False):
             shared.state.job_count = 0
 
             if extra_outputs_array is None:
-                extra_outputs_array = [None, '']
+                extra_outputs_array = [None, ""]
 
-            error_message = f'{type(e).__name__}: {e}'
-            res = extra_outputs_array + [f"<div class='error'>{html.escape(error_message)}</div>"]
+            error_message = f"{type(e).__name__}: {e}"
+            res = extra_outputs_array + [
+                f"<div class='error'>{html.escape(error_message)}</div>"
+            ]
 
         devices.torch_gc()
 
@@ -89,18 +109,22 @@ def wrap_gradio_call(func, extra_outputs=None, add_stats=False):
         elapsed_s = elapsed % 60
         elapsed_text = f"{elapsed_s:.1f} sec."
         if elapsed_m > 0:
-            elapsed_text = f"{elapsed_m} min. "+elapsed_text
+            elapsed_text = f"{elapsed_m} min. " + elapsed_text
 
         if run_memmon:
-            mem_stats = {k: -(v//-(1024*1024)) for k, v in shared.mem_mon.stop().items()}
-            active_peak = mem_stats['active_peak']
-            reserved_peak = mem_stats['reserved_peak']
-            sys_peak = mem_stats['system_peak']
-            sys_total = mem_stats['total']
-            sys_pct = sys_peak/max(sys_total, 1) * 100
+            mem_stats = {
+                k: -(v // -(1024 * 1024)) for k, v in shared.mem_mon.stop().items()
+            }
+            active_peak = mem_stats["active_peak"]
+            reserved_peak = mem_stats["reserved_peak"]
+            sys_peak = mem_stats["system_peak"]
+            sys_total = mem_stats["total"]
+            sys_pct = sys_peak / max(sys_total, 1) * 100
 
             toltip_a = "Active: peak amount of video memory used during generation (excluding cached data)"
-            toltip_r = "Reserved: total amount of video memory allocated by the Torch library "
+            toltip_r = (
+                "Reserved: total amount of video memory allocated by the Torch library "
+            )
             toltip_sys = "System: peak amount of video memory allocated by all running programs, out of total capacity"
 
             text_a = f"<abbr title='{toltip_a}'>A</abbr>: <span class='measurement'>{active_peak/1024:.2f} GB</span>"
@@ -109,10 +133,12 @@ def wrap_gradio_call(func, extra_outputs=None, add_stats=False):
 
             vram_html = f"<p class='vram'>{text_a}, <wbr>{text_r}, <wbr>{text_sys}</p>"
         else:
-            vram_html = ''
+            vram_html = ""
 
         # last item is always HTML
-        res[-1] += f"<div class='performance'><p class='time'>Time taken: <wbr><span class='measurement'>{elapsed_text}</span></p>{vram_html}</div>"
+        res[
+            -1
+        ] += f"<div class='performance'><p class='time'>Time taken: <wbr><span class='measurement'>{elapsed_text}</span></p>{vram_html}</div>"
 
         return tuple(res)
 

@@ -353,6 +353,7 @@ def create_ui():
             with ExitStack() as stack:
                 if shared.opts.txt2img_settings_accordion:
                     stack.enter_context(gr.Accordion("Open for Settings", open=False))
+
                 stack.enter_context(
                     gr.Column(variant="compact", elem_id="txt2img_settings")
                 )
@@ -515,6 +516,7 @@ def create_ui():
                                         ),
                                         value="Use same checkpoint",
                                     )
+
                                     create_refresh_button(
                                         hr_checkpoint_name,
                                         modules.sd_models.list_models,
