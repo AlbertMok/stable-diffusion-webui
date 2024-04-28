@@ -7,7 +7,10 @@ from modules.ui_components import ToolButton
 
 
 class Toprow:
-    """Creates a top row UI with prompts, generate button, styles, extra little buttons for things, and enables some functionality related to their operation"""
+    """Creates a top row UI with prompts,
+    generate button, styles,
+    extra little buttons for things,
+    and enables some functionality related to their operation"""
 
     prompt = None
     prompt_img = None

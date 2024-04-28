@@ -163,6 +163,7 @@ def txt2img(id_task: str, request: gr.Request, *args):
     if opts.do_not_show_images:
         processed.images = []
 
+    # return result
     return (
         processed.images,
         generation_info_js,

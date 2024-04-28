@@ -254,6 +254,7 @@ def setup_progressbar(*args, **kwargs):
     pass
 
 
+# 应用设置
 def apply_setting(key, value):
     if value is None:
         return gr.update()
@@ -329,6 +330,7 @@ def create_ui():
 
     parameters_copypaste.reset()
 
+    # settings button
     settings = ui_settings.UiSettings()
     settings.register_settings()
 
@@ -336,6 +338,7 @@ def create_ui():
     scripts.scripts_txt2img.initialize_scripts(is_img2img=False)
 
     with gr.Blocks(analytics_enabled=False) as txt2img_interface:
+        # toprow 是公共组件，都会用到的组件
         toprow = ui_toprow.Toprow(
             is_img2img=False, is_compact=shared.opts.compact_prompt_box
         )
@@ -362,6 +365,7 @@ def create_ui():
 
                 for category in ordered_ui_categories():
                     if category == "prompt":
+                        # 构造提示词输入框
                         toprow.create_inline_toprow_prompts()
 
                     elif category == "dimensions":

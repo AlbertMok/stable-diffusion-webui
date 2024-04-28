@@ -1090,6 +1090,7 @@ def create_infotext(
     return f"{prompt_text}{negative_prompt_text}\n{generation_params_text}".strip()
 
 
+# 具体的执行
 def process_images(p: StableDiffusionProcessing) -> Processed:
     if p.scripts is not None:
         p.scripts.before_process(p)
@@ -1123,6 +1124,7 @@ def process_images(p: StableDiffusionProcessing) -> Processed:
 
         sd_models.apply_token_merging(p.sd_model, p.get_token_merging_ratio())
 
+        # 看到程序会先加载sd模型和vae模型，然后调用process_images_inner进行具体的生成步骤
         res = process_images_inner(p)
 
     finally:
