@@ -185,15 +185,16 @@ def configure_opts_onchange():
     from modules import shared, sd_models, sd_vae, ui_tempdir, sd_hijack
     from modules.call_queue import wrap_queued_call
 
-    shared.opts.onchange(
-        "sd_model_checkpoint",
-        wrap_queued_call(lambda: sd_models.reload_model_weights()),
-        call=False,
-    )
+    # 监听模型变化，重新加载模型权重
+    # shared.opts.onchange(
+    #     "sd_model_checkpoint",
+    #     wrap_queued_call(lambda: sd_models.reload_model_weights()),
+    #     call=False,
+    # )
 
-    shared.opts.onchange(
-        "sd_vae", wrap_queued_call(lambda: sd_vae.reload_vae_weights()), call=False
-    )
+    # shared.opts.onchange(
+    #     "sd_vae", wrap_queued_call(lambda: sd_vae.reload_vae_weights()), call=False
+    # )
 
     shared.opts.onchange(
         "sd_vae_overrides_per_model_preferences",

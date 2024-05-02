@@ -256,6 +256,9 @@ def setup_progressbar(*args, **kwargs):
 
 # 应用设置
 def apply_setting(key, value):
+    """
+    Apply a setting to the current session
+    """
     if value is None:
         return gr.update()
 
@@ -289,6 +292,9 @@ def apply_setting(key, value):
 
 
 def create_output_panel(tabname, outdir, toprow=None):
+    """
+    Create output panel with gallery, generation info, infotext and html log
+    """
     return ui_common.create_output_panel(tabname, outdir, toprow)
 
 
@@ -345,6 +351,7 @@ def create_ui():
 
         dummy_component = gr.Label(visible=False)
 
+        # extra_tabs 是额外的配置的一些项目
         extra_tabs = gr.Tabs(
             elem_id="txt2img_extra_tabs", elem_classes=["extra-networks"]
         )
@@ -369,6 +376,8 @@ def create_ui():
                         toprow.create_inline_toprow_prompts()
 
                     elif category == "dimensions":
+
+                        # 表单
                         with FormRow():
                             with gr.Column(elem_id="txt2img_column_size", scale=4):
                                 width = gr.Slider(
@@ -563,6 +572,7 @@ def create_ui():
                                                 placeholder="Prompt for hires fix pass.\nLeave empty to use the same prompt as in first pass.",
                                                 elem_classes=["prompt"],
                                             )
+
                                     with gr.Column(scale=80):
                                         with gr.Row():
                                             hr_negative_prompt = gr.Textbox(
@@ -608,6 +618,8 @@ def create_ui():
                     if category not in {"accordions"}:
                         scripts.scripts_txt2img.setup_ui_for_section(category)
 
+            # ================================================
+            # Hires 配置
             hr_resolution_preview_inputs = [
                 enable_hr,
                 width,
@@ -630,6 +642,7 @@ def create_ui():
                     outputs=[hr_final_resolution],
                     show_progress=False,
                 )
+
                 event(
                     None,
                     _js="onCalcResolutionHires",
@@ -638,10 +651,14 @@ def create_ui():
                     show_progress=False,
                 )
 
+            # ================================================
+            # 创建输出面板
             output_panel = create_output_panel(
                 "txt2img", opts.outdir_txt2img_samples, toprow
             )
 
+            # ================================================
+            # 文生图的输入参数
             txt2img_inputs = [
                 dummy_component,
                 toprow.prompt,
@@ -675,6 +692,7 @@ def create_ui():
             ]
 
             txt2img_args = dict(
+                # 调用文生图方法来生成图片
                 fn=wrap_gradio_gpu_call(
                     # call text2img and then create a process
                     modules.txt2img.txt2img,
@@ -686,9 +704,13 @@ def create_ui():
                 show_progress=False,
             )
 
+            # ================================================
+            # 提交参数，生成图片
+            # 在Python中，使用双星号（**）是一种特殊的传递字典类型参数的方式，被称为关键字参数解包（Keyword Argument Unpacking）
             toprow.prompt.submit(**txt2img_args)
             toprow.submit.click(**txt2img_args)
 
+            # 输出面板
             output_panel.button_upscale.click(
                 fn=wrap_gradio_gpu_call(
                     modules.txt2img.txt2img_upscale, extra_outputs=[None, "", ""]
@@ -2139,6 +2161,7 @@ def create_ui():
         )
         gr.HTML(footer, elem_id="footer")
 
+        # 头部设置按钮，切换模型用的
         settings.add_functionality(demo)
 
         update_image_cfg_scale_visibility = lambda: gr.update(

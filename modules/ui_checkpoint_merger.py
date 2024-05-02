@@ -53,6 +53,7 @@ class UiCheckpointMerger:
                             elem_id="modelmerger_primary_model_name",
                             label="Primary model (A)",
                         )
+
                         create_refresh_button(
                             self.primary_model_name,
                             sd_models.list_models,
@@ -65,6 +66,7 @@ class UiCheckpointMerger:
                             elem_id="modelmerger_secondary_model_name",
                             label="Secondary model (B)",
                         )
+
                         create_refresh_button(
                             self.secondary_model_name,
                             sd_models.list_models,
@@ -219,6 +221,7 @@ class UiCheckpointMerger:
         self.modelmerger_merge.click(
             fn=lambda: "", inputs=[], outputs=[self.modelmerger_result]
         )
+
         self.modelmerger_merge.click(
             fn=call_queue.wrap_gradio_gpu_call(
                 modelmerger, extra_outputs=lambda: [gr.update() for _ in range(4)]

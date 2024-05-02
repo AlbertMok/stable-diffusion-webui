@@ -40,9 +40,15 @@ import numpy as np
 model_dir = "Stable-diffusion"
 model_path = os.path.abspath(os.path.join(paths.models_path, model_dir))
 
+# 一个全局变量，用来存储模型的检查点信息
 checkpoints_list = {}
+
+# 一个全局变量，用来存储模型的别名信息
 checkpoint_aliases = {}
+
 checkpoint_alisases = checkpoint_aliases  # for compatibility with old name
+
+# 一个全局变量，用来存储已经加载了的模型检查点信息
 checkpoints_loaded = collections.OrderedDict()
 
 
@@ -136,11 +142,18 @@ class CheckpointInfo:
             ]
 
     def register(self):
+        """
+        将模型信息注册到 checkpoints_list 和 checkpoint_aliases 字典中
+        """
         checkpoints_list[self.title] = self
         for id in self.ids:
             checkpoint_aliases[id] = self
 
     def calculate_shorthash(self):
+        """
+        计算模型的短哈希值
+        """
+
         self.sha256 = hashes.sha256(self.filename, f"checkpoint/{self.name}")
         if self.sha256 is None:
             return
@@ -189,16 +202,24 @@ def setup_model():
 
 
 def checkpoint_tiles(use_short=False):
+    """
+    返回模型检查点的标题列表
+    """
     return [x.short_title if use_short else x.title for x in checkpoints_list.values()]
 
 
 def list_models():
     """
     show the models in the spec directory
+    列出指定目录中的所有模型，并对这些模型进行一些处理和统计
     """
+
+    # 清空两个全局变量
     checkpoints_list.clear()
     checkpoint_aliases.clear()
 
+    # cmd_ckpt 是命令行指定用的模型文件
+    # 通过shared.cmd_opts访问命令行参数。如果用户没有禁止下载模型
     cmd_ckpt = shared.cmd_opts.ckpt
     if (
         shared.cmd_opts.no_download_sd_model
@@ -209,6 +230,7 @@ def list_models():
     else:
         model_url = f"{shared.hf_endpoint}/runwayml/stable-diffusion-v1-5/resolve/main/v1-5-pruned-emaonly.safetensors"
 
+    # 使用modelloader.load_models函数加载符合条件的模型文件
     model_list = modelloader.load_models(
         model_path=model_path,
         model_url=model_url,
@@ -220,6 +242,8 @@ def list_models():
 
     if os.path.exists(cmd_ckpt):
         checkpoint_info = CheckpointInfo(cmd_ckpt)
+
+        # register函数将模型信息注册到checkpoints_list和checkpoint_aliases字典中
         checkpoint_info.register()
 
         shared.opts.data["sd_model_checkpoint"] = checkpoint_info.title
@@ -238,6 +262,12 @@ re_strip_checksum = re.compile(r"\s*\[[^]]+]\s*$")
 
 
 def get_closet_checkpoint_match(search_string):
+    """
+    Returns the closest checkpoint match to the search string.
+    If the search string is an alias, returns the corresponding checkpoint.
+    中文：返回与搜索字符串最接近的检查点匹配项。如果搜索字符串是别名，则返回相应的检查点。
+    """
+
     if not search_string:
         return None
 
@@ -284,20 +314,36 @@ def model_hash(filename):
 
 
 def select_checkpoint():
-    """Raises `FileNotFoundError` if no checkpoints are found."""
+    """Raises `FileNotFoundError` if no checkpoints are found.
+
+    从 `shared.opts.sd_model_checkpoint` 获取要加载的模型检查点名称。
+
+    """
+
+    # 首先，从 shared.opts.sd_model_checkpoint 获取要加载的模型检查点名称。
     model_checkpoint = shared.opts.sd_model_checkpoint
 
+    # 使用 checkpoint_aliases 字典尝试查找该检查点名称对应的信息 checkpoint_info。
     checkpoint_info = checkpoint_aliases.get(model_checkpoint, None)
+
     if checkpoint_info is not None:
         return checkpoint_info
 
+    # 处理未找到指定检查点的情况：
     if len(checkpoints_list) == 0:
+
+        # 检查当前可用的检查点列表 checkpoints_list 的长度是否为 0，如果是，则抛出 FileNotFoundError 异常。
         error_message = (
             "No checkpoints found. When searching for checkpoints, looked at:"
         )
+
+        # 检查 shared.cmd_opts.ckpt 是否为 None，如果不是，则将其添加到错误消息中。
         if shared.cmd_opts.ckpt is not None:
             error_message += f"\n - file {os.path.abspath(shared.cmd_opts.ckpt)}"
+
+        # 将模型路径 model_path 和 shared.cmd_opts.ckpt_dir 添加到错误消息中。
         error_message += f"\n - directory {model_path}"
+
         if shared.cmd_opts.ckpt_dir is not None:
             error_message += (
                 f"\n - directory {os.path.abspath(shared.cmd_opts.ckpt_dir)}"
@@ -306,6 +352,7 @@ def select_checkpoint():
         raise FileNotFoundError(error_message)
 
     checkpoint_info = next(iter(checkpoints_list.values()))
+
     if model_checkpoint is not None:
         print(
             f"Checkpoint {model_checkpoint} not found; loading fallback {checkpoint_info.title}",
@@ -435,7 +482,9 @@ def get_checkpoint_state_dict(checkpoint_info: CheckpointInfo, timer):
 
 
 class SkipWritingToConfig:
-    """This context manager prevents load_model_weights from writing checkpoint name to the config when it loads weight."""
+    """This context manager
+    prevents load_model_weights from writing checkpoint name to the config when it loads weight.
+    """
 
     skip = False
     previous = None
@@ -450,6 +499,9 @@ class SkipWritingToConfig:
 
 
 def check_fp8(model):
+    """
+    用于检查是否应该启用 FP8 存储格式（8位浮点数）
+    """
     if model is None:
         return None
     if devices.get_optimal_device_name() == "mps":
@@ -467,19 +519,29 @@ def check_fp8(model):
 
 
 def load_model_weights(model, checkpoint_info: CheckpointInfo, state_dict, timer):
+    """
+    加载模型权重
+    """
+
+    # 从 checkpoint_info 中获取模型的短哈希值
     sd_model_hash = checkpoint_info.calculate_shorthash()
+
+    # 计时器记录
     timer.record("calculate hash")
 
     if devices.fp8:
         # prevent model to load state dict in fp8
         model.half()
 
+    # 如果不跳过写入配置，则更新共享配置 shared.opts.data["sd_model_checkpoint"] 为 checkpoint_info.title
     if not SkipWritingToConfig.skip:
         shared.opts.data["sd_model_checkpoint"] = checkpoint_info.title
 
+    # 获取状态字典，如果 state_dict 为 None，则调用 get_checkpoint_state_dict(checkpoint_info, timer) 获取模型的状态字典
     if state_dict is None:
         state_dict = get_checkpoint_state_dict(checkpoint_info, timer)
 
+    # 根据模型是否具有特定属性来判断模型类型
     model.is_sdxl = hasattr(model, "conditioner")
     model.is_sd2 = not model.is_sdxl and hasattr(model.cond_stage_model, "model")
     model.is_sd1 = not model.is_sdxl and not model.is_sd2
@@ -494,15 +556,19 @@ def load_model_weights(model, checkpoint_info: CheckpointInfo, state_dict, timer
     if model.is_ssd:
         sd_hijack.model_hijack.convert_sdxl_to_ssd(model)
 
+    # 缓存新加载的模型，根据配置 shared.opts.sd_checkpoint_cache，将新加载的模型状态字典进行缓存
     if shared.opts.sd_checkpoint_cache > 0:
         # cache newly loaded model
         checkpoints_loaded[checkpoint_info] = state_dict.copy()
 
+    # 加载模型权重，调用 model.load_state_dict(state_dict, strict=False) 加载状态字典到模型中，
+    # 使用 strict=False 表示允许部分加载
     model.load_state_dict(state_dict, strict=False)
     timer.record("apply weights to model")
 
     del state_dict
 
+    # 数据类型转换
     if shared.cmd_opts.opt_channelslast:
         model.to(memory_format=torch.channels_last)
         timer.record("apply channels_last")
@@ -535,6 +601,7 @@ def load_model_weights(model, checkpoint_info: CheckpointInfo, state_dict, timer
         devices.dtype_unet = torch.float16
         timer.record("apply half()")
 
+    # 应用特定的覆盖调度
     apply_alpha_schedule_override(model)
 
     for module in model.modules():
@@ -1020,18 +1087,28 @@ def reuse_model_from_already_loaded(sd_model, checkpoint_info, timer):
         return None
 
 
+# 尽可能地复用已加载的模型，以节省加载时间
 def reload_model_weights(sd_model=None, info=None, forced_reload=False):
+
+    # 首先，函数尝试从参数 info 或者通过 select_checkpoint() 函数选择一个检查点信息 checkpoint_info
     checkpoint_info = info or select_checkpoint()
 
+    # 接着，创建一个计时器 timer 用于记录加载过程中的时间
     timer = Timer()
 
+    # 如果参数 sd_model 为 None，则尝试从 model_data.sd_model 获取模型
     if not sd_model:
         sd_model = model_data.sd_model
 
     if sd_model is None:  # previous model load failed
+        # 如果 sd_model 仍然为 None，则说明之前的模型加载失败，将 current_checkpoint_info 设为 None
         current_checkpoint_info = None
     else:
+
+        # 如果 sd_model 存在，则检查模型的 sd_checkpoint_info 以及其是否与当前的 checkpoint_info 相同
         current_checkpoint_info = sd_model.sd_checkpoint_info
+
+        # 如果当前的模型已经是 FP8 存储格式，但是当前设备不支持 FP8，则强制重新加载
         if check_fp8(sd_model) != devices.fp8:
             # load from state dict again to prevent extra numerical errors
             forced_reload = True
@@ -1040,8 +1117,9 @@ def reload_model_weights(sd_model=None, info=None, forced_reload=False):
             and not forced_reload
         ):
             return sd_model
-
+    # 尽可能地复用已加载的模型，以节省加载时间
     sd_model = reuse_model_from_already_loaded(sd_model, checkpoint_info, timer)
+
     if (
         not forced_reload
         and sd_model is not None
@@ -1049,19 +1127,24 @@ def reload_model_weights(sd_model=None, info=None, forced_reload=False):
     ):
         return sd_model
 
+    # 如果 sd_model 不为 None，则将其移动到 CPU
     if sd_model is not None:
         sd_unet.apply_unet("None")
+        # 发送到CPU
         send_model_to_cpu(sd_model)
         sd_hijack.model_hijack.undo_hijack(sd_model)
 
+    # 获取检查点的状态字典 state_dict
     state_dict = get_checkpoint_state_dict(checkpoint_info, timer)
 
+    # 根据状态字典和检查点信息，查找相应的模型配置 checkpoint_config
     checkpoint_config = sd_models_config.find_checkpoint_config(
         state_dict, checkpoint_info
     )
 
     timer.record("find config")
 
+    # 如果当前模型为 None 或者检查点配置与当前模型使用的配置不同，则加载新模型
     if sd_model is None or checkpoint_config != sd_model.used_config:
         if sd_model is not None:
             send_model_to_trash(sd_model)

@@ -755,6 +755,8 @@ class Api:
         add_task_to_queue(task_id)
 
         with self.queue_lock:
+
+            # 调用 ProcessingText2Image
             with closing(
                 StableDiffusionProcessingTxt2Img(sd_model=shared.sd_model, **args)
             ) as p:

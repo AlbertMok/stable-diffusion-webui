@@ -7,10 +7,12 @@ from modules.ui_components import ToolButton
 
 
 class Toprow:
-    """Creates a top row UI with prompts,
+    """
+    Creates a top row UI with prompts,
     generate button, styles,
     extra little buttons for things,
-    and enables some functionality related to their operation"""
+    and enables some functionality related to their operation
+    """
 
     prompt = None
     prompt_img = None
@@ -39,6 +41,8 @@ class Toprow:
     submit_box = None
 
     def __init__(self, is_img2img, is_compact=False, id_part=None):
+
+        # id_part表示当前是在img2img还是txt2img
         if id_part is None:
             id_part = "img2img" if is_img2img else "txt2img"
 
@@ -53,8 +57,11 @@ class Toprow:
             self.create_submit_box()
 
     def create_classic_toprow(self):
+
+        # 创建prompt输入区域
         self.create_prompts()
 
+        # 另一列是一些按钮和样式
         with gr.Column(scale=1, elem_id=f"{self.id_part}_actions_column"):
             self.create_submit_box()
 
@@ -63,9 +70,15 @@ class Toprow:
             self.create_styles_ui()
 
     def create_inline_toprow_prompts(self):
+        """
+        第一列：创建prompt输入区域
+        第二列：创建一些按钮和样式按钮
+
+        """
         if not self.is_compact:
             return
 
+        # 创建prompt 输入区域
         self.create_prompts()
 
         with gr.Row(elem_classes=["toprow-compact-stylerow"]):
@@ -80,7 +93,10 @@ class Toprow:
 
         self.submit_box.render()
 
+    # 创建prompt输入区域
     def create_prompts(self):
+
+        # prompt container，one column
         with gr.Column(
             elem_id=f"{self.id_part}_prompt_container",
             elem_classes=["prompt-container-compact"] if self.is_compact else [],
@@ -93,13 +109,14 @@ class Toprow:
                 self.prompt = gr.Textbox(
                     label="Prompt",
                     elem_id=f"{self.id_part}_prompt",
-                    show_label=False,
+                    show_label=True,
                     lines=3,
                     placeholder="Prompt\n(Press Ctrl+Enter to generate, Alt+Enter to skip, Esc to interrupt)",
                     elem_classes=["prompt"],
                 )
+
                 self.prompt_img = gr.File(
-                    label="",
+                    label="Prompt Image",
                     elem_id=f"{self.id_part}_prompt_image",
                     file_count="single",
                     type="binary",
@@ -126,6 +143,7 @@ class Toprow:
             show_progress=False,
         )
 
+    # 创建提交按钮
     def create_submit_box(self):
         with gr.Row(
             elem_id=f"{self.id_part}_generate_box",
@@ -150,6 +168,7 @@ class Toprow:
                 tooltip="Stop generation of current batch and continues onto next batch",
             )
 
+            # 中断按钮
             self.interrupting = gr.Button(
                 "Interrupting...",
                 elem_id=f"{self.id_part}_interrupting",
@@ -157,6 +176,8 @@ class Toprow:
                 tooltip="Interrupting generation...",
             )
 
+            # -------------------------------
+            # 生成按钮
             self.submit = gr.Button(
                 "Generate",
                 elem_id=f"{self.id_part}_generate",
@@ -175,10 +196,14 @@ class Toprow:
                         "Generation will stop after finishing this image, click again to stop immediately."
                     )
                 else:
+
+                    # 中断生成
                     shared.state.interrupt()
 
+            # 跳过按钮的点击事件
             self.skip.click(fn=shared.state.skip)
 
+            # 中断按钮的点击事件
             self.interrupt.click(
                 fn=interrupt_function,
                 _js='function(){ showSubmitInterruptingPlaceholder("'
@@ -188,6 +213,7 @@ class Toprow:
 
             self.interrupting.click(fn=interrupt_function)
 
+    # 创建工具栏按钮
     def create_tools_row(self):
         with gr.Row(elem_id=f"{self.id_part}_tools"):
             from modules.ui import (
@@ -196,22 +222,28 @@ class Toprow:
                 restore_progress_symbol,
             )
 
+            # 粘贴按钮
             self.paste = ToolButton(
                 value=paste_symbol,
                 elem_id="paste",
                 tooltip="Read generation parameters from prompt or last generation if prompt is empty into user interface.",
             )
+
+            # 清空按钮
             self.clear_prompt_button = ToolButton(
                 value=clear_prompt_symbol,
                 elem_id=f"{self.id_part}_clear_prompt",
                 tooltip="Clear prompt",
             )
+
+            # 应用样式按钮
             self.apply_styles = ToolButton(
                 value=ui_prompt_styles.styles_materialize_symbol,
                 elem_id=f"{self.id_part}_style_apply",
                 tooltip="Apply all selected styles to prompts.",
             )
 
+            # 如果是img2img，创建两个按钮
             if self.is_img2img:
                 self.button_interrogate = ToolButton(
                     "📎",
@@ -257,6 +289,7 @@ class Toprow:
                 outputs=[self.prompt, self.negative_prompt],
             )
 
+    # 创建样式UI
     def create_styles_ui(self):
         self.ui_styles = ui_prompt_styles.UiPromptStyles(
             self.id_part, self.prompt, self.negative_prompt

@@ -118,6 +118,9 @@ class UiSettings:
         )
 
     def run_settings_single(self, value, key):
+        """
+        主要用于响应界面上单个设置的更改，包括校验新的设置值，更新设置，保存到本地配置文件，以及触发界面的更新
+        """
         if not opts.same_type(value, opts.data_labels[key].default):
             return gr.update(visible=True), opts.dumpjson()
 
@@ -269,6 +272,7 @@ class UiSettings:
                         reload_sd_model = gr.Button(
                             value="Load SD checkpoint to VRAM from RAM",
                             elem_id="sett_reload_sd_model",
+                            visible=True,
                         )
                     with gr.Row():
                         calculate_all_checkpoint_hash = gr.Button(
@@ -405,6 +409,10 @@ class UiSettings:
                 self.component_dict[k] = component
 
     def add_functionality(self, demo):
+        """
+        add_functionality 函数添加了事件侦听器和回调函数，用于响应用户与组件的交互
+        """
+
         self.submit.click(
             fn=wrap_gradio_call(
                 lambda *args: self.run_settings(*args), extra_outputs=[gr.update()]
@@ -415,6 +423,7 @@ class UiSettings:
 
         for _i, k, _item in self.quicksettings_list:
             component = self.component_dict[k]
+
             info = opts.data_labels[k]
 
             if isinstance(component, gr.Textbox):
@@ -434,7 +443,7 @@ class UiSettings:
 
         # change sd_model
         button_set_checkpoint = gr.Button(
-            "Change checkpoint", elem_id="change_checkpoint", visible=False
+            "Change checkpoint", elem_id="change_checkpoint", visible=True
         )
 
         # 用户切换模型，实质上是修改了一个key为sd_model_checkpoint的变量值，不会直接去加载模型

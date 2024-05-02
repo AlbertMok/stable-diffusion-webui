@@ -41,13 +41,18 @@ def txt2img_create_processing(
     *args,
     force_enable_hr=False,
 ):
+    """
+    Create a processing object for txt2img task
+
+    """
     override_settings = create_override_settings_dict(override_settings_texts)
 
     if force_enable_hr:
         enable_hr = True
 
+    # 创建一个StableDiffusionProcessingTxt2Img类的对象，来执行生成图片的任务
     p = processing.StableDiffusionProcessingTxt2Img(
-        sd_model=shared.sd_model,
+        sd_model=shared.sd_model,  # 传入模型参数
         outpath_samples=opts.outdir_samples or opts.outdir_txt2img_samples,
         outpath_grids=opts.outdir_grids or opts.outdir_txt2img_grids,
         prompt=prompt,
@@ -146,6 +151,8 @@ def txt2img_upscale(
 
 
 def txt2img(id_task: str, request: gr.Request, *args):
+
+    # 创建一个进程
     p = txt2img_create_processing(id_task, request, *args)
 
     with closing(p):
@@ -157,6 +164,7 @@ def txt2img(id_task: str, request: gr.Request, *args):
     shared.total_tqdm.clear()
 
     generation_info_js = processed.js()
+
     if opts.samples_log_stdout:
         print(generation_info_js)
 

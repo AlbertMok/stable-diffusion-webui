@@ -475,6 +475,7 @@ options_templates.update(
     options_section(
         ("sd", "Stable Diffusion", "sd"),
         {
+            # 切换模型
             "sd_model_checkpoint": OptionInfo(
                 None,
                 "Stable Diffusion checkpoint",
