@@ -151,30 +151,44 @@ def txt2img_upscale(
 
 
 def txt2img(id_task: str, request: gr.Request, *args):
+    """
+    处理文本到图片生成任务，并返回生成的图片及相关信息
+    """
 
     # 创建一个进程
+    # 调用txt2img_create_processing函数，创建一个处理此任务的进程对象p
     p = txt2img_create_processing(id_task, request, *args)
 
+    # 执行图片生成任务
+    # with closing(p):确保在代码块执行完毕后，无论成功还是异常终止，p对象都会被正确关闭或销毁
     with closing(p):
+
+        # 这表明系统可能有两种处理图片任务的方法，优先使用第一种（可能因为它更专门），如果第一种没有返回结果，则使用第二种备选方案
         processed = modules.scripts.scripts_txt2img.run(p, *p.script_args)
 
+        # 如果此方法返回None，则调用processing.process_images(p)来处理图片
         if processed is None:
             processed = processing.process_images(p)
 
     shared.total_tqdm.clear()
 
+    # 处理生成的信息
     generation_info_js = processed.js()
 
+    # 处理日志输出
     if opts.samples_log_stdout:
         print(generation_info_js)
 
+    # 如果设置了不显示图片，则将图片置空
     if opts.do_not_show_images:
         processed.images = []
 
     # return result
     return (
-        processed.images,
-        generation_info_js,
-        plaintext_to_html(processed.info),
-        plaintext_to_html(processed.comments, classname="comments"),
+        processed.images,  # 生成的图像列表
+        generation_info_js,  # 处理后的JavaScript表示信息
+        plaintext_to_html(processed.info),  # 将生成过程的信息（纯文本）转换为HTML
+        plaintext_to_html(
+            processed.comments, classname="comments"
+        ),  # 将生成过程的评论转换为带有类名“comments”的HTML格式
     )

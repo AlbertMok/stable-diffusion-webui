@@ -194,12 +194,17 @@ class Shared(sys.modules[__name__].__class__):
     """
     this class is here to provide sd_model field as a property, so that it can be created and loaded on demand rather than
     at program startup.
+
+    sd_model 实际上是从这里获取
     """
 
     sd_model_val = None
 
     @property
     def sd_model(self):
+        """
+        调用 `shared.sd_model` 时会通过这个get函数访问到，然后调用 `model_data.get_sd_model()` 这个函数来获取模型
+        """
         import modules.sd_models
 
         return modules.sd_models.model_data.get_sd_model()

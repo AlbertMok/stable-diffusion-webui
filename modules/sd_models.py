@@ -318,6 +318,8 @@ def select_checkpoint():
 
     从 `shared.opts.sd_model_checkpoint` 获取要加载的模型检查点名称。
 
+    从 opts.sd_model_checkpoint 中获取要加载的模型检查点名称。
+
     """
 
     # 首先，从 shared.opts.sd_model_checkpoint 获取要加载的模型检查点名称。
@@ -806,21 +808,26 @@ sdxl_refiner_clip_weight = "conditioner.embedders.0.model.ln_final.weight"
 
 class SdModelData:
     def __init__(self):
-        self.sd_model = None
-        self.loaded_sd_models = []
-        self.was_loaded_at_least_once = False
-        self.lock = threading.Lock()
+        self.sd_model = None  # 存放当前的模型实例
+        self.loaded_sd_models = []  # 一个列表，用于存放之前加载过的模型实例
+        self.was_loaded_at_least_once = False  # 指示模型是否至少加载过一次
+        self.lock = threading.Lock()  # 用于在加载模型时提供线程安全
 
     def get_sd_model(self):
+        # 如果之前已经至少加载过一次模型，则直接返回当前的模型实例
         if self.was_loaded_at_least_once:
             return self.sd_model
 
         if self.sd_model is None:
-            with self.lock:
+            # 若模型尚未被加载
+            with self.lock:  # 创建一个线程锁
+
+                # 检查模型是否已经被加载，或者是否至少已经尝试过一次加载
                 if self.sd_model is not None or self.was_loaded_at_least_once:
                     return self.sd_model
 
                 try:
+                    # 加载模型
                     load_model()
 
                 except Exception as e:
@@ -834,10 +841,14 @@ class SdModelData:
         return self.sd_model
 
     def set_sd_model(self, v, already_loaded=False):
-        self.sd_model = v
+        self.sd_model = v  # 首先将传入的模型实例 v 赋值给 self.sd_model
+
+        # 如果 already_loaded 参数被设为 True，这表明模型实例 v 已经被加载
         if already_loaded:
             sd_vae.base_vae = getattr(v, "base_vae", None)
             sd_vae.loaded_vae_file = getattr(v, "loaded_vae_file", None)
+
+            # checkpoint_info 从 v 中直接获取，并赋给 sd_vae.checkpoint_info
             sd_vae.checkpoint_info = v.sd_checkpoint_info
 
         try:
@@ -893,13 +904,18 @@ def send_model_to_trash(m):
 
 
 def load_model(checkpoint_info=None, already_loaded_state_dict=None):
+    """
+    加载模型
+    """
     from modules import sd_hijack
 
     checkpoint_info = checkpoint_info or select_checkpoint()
 
+    # 用于测量加载模型所需时间的不同阶段。
     timer = Timer()
 
     if model_data.sd_model:
+        # 如果 model_data 对象（可能在外部定义）的 sd_model 属性已存在，那么它将被废弃，并释放相关资源
         send_model_to_trash(model_data.sd_model)
         model_data.sd_model = None
         devices.torch_gc()
@@ -907,13 +923,17 @@ def load_model(checkpoint_info=None, already_loaded_state_dict=None):
     timer.record("unload existing model")
 
     if already_loaded_state_dict is not None:
+        # 如果提供了参数 already_loaded_state_dict，就直接使用这个状态字典
         state_dict = already_loaded_state_dict
     else:
+        # 状态字典 (state_dict) 包含了模型的权重和参数
         state_dict = get_checkpoint_state_dict(checkpoint_info, timer)
 
+    # 通过 sd_models_config.find_checkpoint_config 查找与提供的状态字典和检查点信息相匹配的配置
     checkpoint_config = sd_models_config.find_checkpoint_config(
         state_dict, checkpoint_info
     )
+
     clip_is_included_into_sd = any(
         x
         for x in [
@@ -1014,6 +1034,7 @@ def reuse_model_from_already_loaded(sd_model, checkpoint_info, timer):
     If not, returns the model that can be used to load weights from checkpoint_info's file.
     If no such model exists, returns None.
     Additionally deletes loaded models that are over the limit set in settings (sd_checkpoints_limit).
+    尝试复用已加载的模型以节省加载时间。具体来说，函数会检查在model_data.loaded_sd_models中是否已经加载了所需的检查点
     """
 
     if (
@@ -1089,6 +1110,9 @@ def reuse_model_from_already_loaded(sd_model, checkpoint_info, timer):
 
 # 尽可能地复用已加载的模型，以节省加载时间
 def reload_model_weights(sd_model=None, info=None, forced_reload=False):
+    """
+    目的是在不必要时避免重新加载模型以节省时间，同时确保在需要时正确地更新模型权重
+    """
 
     # 首先，函数尝试从参数 info 或者通过 select_checkpoint() 函数选择一个检查点信息 checkpoint_info
     checkpoint_info = info or select_checkpoint()
@@ -1096,15 +1120,16 @@ def reload_model_weights(sd_model=None, info=None, forced_reload=False):
     # 接着，创建一个计时器 timer 用于记录加载过程中的时间
     timer = Timer()
 
-    # 如果参数 sd_model 为 None，则尝试从 model_data.sd_model 获取模型
+    # 如果参数 sd_model 为 None，则从 model_data.sd_model 获取模型
     if not sd_model:
         sd_model = model_data.sd_model
 
     if sd_model is None:  # previous model load failed
         # 如果 sd_model 仍然为 None，则说明之前的模型加载失败，将 current_checkpoint_info 设为 None
         current_checkpoint_info = None
-    else:
 
+    else:
+        # 如果 sd_model 不为 None
         # 如果 sd_model 存在，则检查模型的 sd_checkpoint_info 以及其是否与当前的 checkpoint_info 相同
         current_checkpoint_info = sd_model.sd_checkpoint_info
 
@@ -1117,7 +1142,8 @@ def reload_model_weights(sd_model=None, info=None, forced_reload=False):
             and not forced_reload
         ):
             return sd_model
-    # 尽可能地复用已加载的模型，以节省加载时间
+
+    # 调用reuse_model_from_already_loaded函数尝试复用已加载的模型，以节省加载时间
     sd_model = reuse_model_from_already_loaded(sd_model, checkpoint_info, timer)
 
     if (
@@ -1132,6 +1158,8 @@ def reload_model_weights(sd_model=None, info=None, forced_reload=False):
         sd_unet.apply_unet("None")
         # 发送到CPU
         send_model_to_cpu(sd_model)
+
+        # 取消对模型的任何之前的篡改（hijack）
         sd_hijack.model_hijack.undo_hijack(sd_model)
 
     # 获取检查点的状态字典 state_dict

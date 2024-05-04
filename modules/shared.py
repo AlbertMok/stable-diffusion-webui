@@ -63,10 +63,15 @@ interrogator: "interrogate.InterrogateModels" = None
 face_restorers = []
 
 options_templates: dict = None
+
+# 全局的共享的配置
 opts: options.Options = None
+
 restricted_opts: set[str] = None
 
+
 sd_model: sd_models_types.WebuiSdModel = None
+"""实际访问不会经过这里"""
 
 settings_components: dict = None
 """assigned from ui.py, a mapping on setting names to gradio components repsponsible for those settings"""

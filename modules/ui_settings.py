@@ -19,16 +19,29 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 def get_value_for_setting(key):
+    """
+    目的是获取与特定配置选项关联的值，并将其用于更新一个UI组件
+    从opts 中获取值，然后通过opts.data_labels[key]获取配置选项的详细信息
+    """
+
+    # 通过getattr函数从opts对象（假设是Options类的实例）中获取名为key的属性的值。这个值是key所对应的配置选项的当前值
     value = getattr(opts, key)
 
+    # 从opts对象的data_labels字典中检索key对应的配置项的OptionInfo对象,data_labels字典将配置项名称映射到其详细信息（如UI组件类型、组件参数等）
     info = opts.data_labels[key]
+
+    # 处理配置选项的组件参数
     args = (
+        # 如果info.component_args是可调用的（即一个函数），它会被调用以获取组件参数的字典
         info.component_args()
         if callable(info.component_args)
         else info.component_args or {}
     )
+
+    # 从参数字典中移除“precision”键（如果存在），得到最终应用到组件的参数字典
     args = {k: v for k, v in args.items() if k not in {"precision"}}
 
+    # 从配置项获取的值value和处理后的参数args来更新UI组件
     return gr.update(value=value, **args)
 
 
@@ -121,15 +134,21 @@ class UiSettings:
         """
         主要用于响应界面上单个设置的更改，包括校验新的设置值，更新设置，保存到本地配置文件，以及触发界面的更新
         """
+
+        # 通过opts.same_type方法检查输入值value所属的数据类型是否与默认值的数据类型一致
         if not opts.same_type(value, opts.data_labels[key].default):
             return gr.update(visible=True), opts.dumpjson()
 
+        # 当输入值类型正确时，函数接着检查value是否为None，并尝试通过opts.set方法更新设置值
+        # opts 存储的是当前的设置值，是由shared.options模块的Options类实例化的对象
+        # 从shared 模块导出
         if value is None or not opts.set(key, value):
             return gr.update(value=getattr(opts, key)), opts.dumpjson()
 
         # 将设置的值保存到本地
         opts.save(shared.config_filename)
 
+        # 返回更新后的设置值和保存后的设置值
         return get_value_for_setting(key), opts.dumpjson()
 
     def register_settings(self):
@@ -413,6 +432,7 @@ class UiSettings:
         add_functionality 函数添加了事件侦听器和回调函数，用于响应用户与组件的交互
         """
 
+        # 应用设置按钮
         self.submit.click(
             fn=wrap_gradio_call(
                 lambda *args: self.run_settings(*args), extra_outputs=[gr.update()]
