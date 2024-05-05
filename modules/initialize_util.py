@@ -186,6 +186,7 @@ def configure_opts_onchange():
     from modules.call_queue import wrap_queued_call
 
     # 监听模型变化，重新加载模型权重
+    #
     shared.opts.onchange(
         "sd_model_checkpoint",
         wrap_queued_call(lambda: sd_models.reload_model_weights()),

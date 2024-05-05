@@ -69,7 +69,9 @@ def webui():
         script_callbacks.before_ui_callback()
         startup_timer.record("scripts before_ui_callback")
 
+        # 创建一个全局的UI
         shared.demo = ui.create_ui()
+
         startup_timer.record("create ui")
 
         if not cmd_opts.no_gradio_queue:

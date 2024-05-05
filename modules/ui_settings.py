@@ -139,15 +139,19 @@ class UiSettings:
         if not opts.same_type(value, opts.data_labels[key].default):
             return gr.update(visible=True), opts.dumpjson()
 
-        # 当输入值类型正确时，函数接着检查value是否为None，并尝试通过opts.set方法更新设置值
+        # 当输入值类型正确时，函数接着检查value是否为None，并尝试通过opts.set方法更新设置值，set方法更新值的时候会执行回调函数
         # opts 存储的是当前的设置值，是由shared.options模块的Options类实例化的对象
-        # 从shared 模块导出
+        # 从shared 模块导出, set 会执行回调函数
         if value is None or not opts.set(key, value):
             return gr.update(value=getattr(opts, key)), opts.dumpjson()
 
         # 将设置的值保存到本地
         opts.save(shared.config_filename)
 
+        print("==================================")
+        print("model is: ")
+        print(getattr(opts, key))
+        print("====================================")
         # 返回更新后的设置值和保存后的设置值
         return get_value_for_setting(key), opts.dumpjson()
 

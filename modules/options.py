@@ -11,14 +11,18 @@ from modules.paths_internal import script_path
 
 
 class OptionInfo:
+    """
+    用来处理用户界面UI 配置选项的信息
+    """
+
     def __init__(
         self,
         default=None,
-        label="",
-        component=None,
-        component_args=None,
-        onchange=None,
-        section=None,
+        label="",  # 显示在UI上的标签文本。
+        component=None,  # 在UI上创建此配置选项的组件类型
+        component_args=None,  # 传递给组件的参数
+        onchange=None,  # 当选项改变时触发的回调函数
+        section=None,  # 配置选项所属的段落或部分
         refresh=None,
         comment_before="",
         comment_after="",
@@ -27,31 +31,51 @@ class OptionInfo:
         category_id=None,
     ):
         self.default = default
+        """配置选项的默认值"""
+
         self.label = label
+        """ 显示在UI上的标签文本"""
+
         self.component = component
+        """在UI上创建此配置选项的组件类型"""
+
         self.component_args = component_args
+        """传递给组件的参数"""
+
         self.onchange = onchange
+        """当选项改变时触发的回调函数"""
+
         self.section = section
+        """配置选项所属的段落或部分"""
+
         self.category_id = category_id
+        """配置选项分类的ID"""
+
         self.refresh = refresh
+        """如果为真，可能表示需要刷新UI以显示更新的设置"""
+
         self.do_not_save = False
+        """ 是否保存配置选项的值"""
 
         self.comment_before = comment_before
-        """HTML text that will be added after label in UI"""
+        """在标签之前添加的HTML注释 HTML text that will be added after label in UI"""
 
         self.comment_after = comment_after
-        """HTML text that will be added before label in UI"""
+        """在标签之后添加的HTML注释 HTML text that will be added before label in UI"""
 
         self.infotext = infotext
+        """可附加在选项旁的信息文本"""
 
         self.restrict_api = restrict_api
-        """If True, the setting will not be accessible via API"""
+        """如果为真，表示此设置不能通过API访问 If True, the setting will not be accessible via API"""
 
     def link(self, label, url):
+        """在 comment_before 文本中添加一个HTML超链接"""
         self.comment_before += f"[<a href='{url}' target='_blank'>{label}</a>]"
         return self
 
     def js(self, label, js_func):
+        """在 comment_before 文本中添加一个调用JavaScript函数的超链接"""
         self.comment_before += f"[<a onclick='{js_func}(); return false'>{label}</a>]"
         return self
 
@@ -164,6 +188,8 @@ class Options:
         return super(Options, self).__setattr__(key, value)
 
     def __getattr__(self, item):
+        """在尝试获取属性值时被调用，优先返回 self.data 中具有给定名称的值，其次是相关 OptionInfo 对象的默认值"""
+
         if item in options_builtin_fields:
             return super(Options, self).__getattribute__(item)
 
@@ -177,13 +203,21 @@ class Options:
         return super(Options, self).__getattribute__(item)
 
     def set(self, key, value, is_api=False, run_callbacks=True):
-        """sets an option and calls its onchange callback, returning True if the option changed and False otherwise"""
+        """
+        设置一个选项的值，并在必要时执行相关的 onchange 回调函数
+        如果这个 option 被修改了(新的值和旧的值不同)，则返回 True，否则返回 False
+
+        sets an option and calls its onchange callback,
+        returning True if the option changed and False otherwise
+        """
 
         oldval = self.data.get(key, None)
+
         if oldval == value:
             return False
 
         option = self.data_labels[key]
+
         if option.do_not_save:
             return False
 
@@ -195,6 +229,7 @@ class Options:
         except RuntimeError:
             return False
 
+        # 如果 option.onchange 不为空，则执行一次 onchange 回调函数
         if run_callbacks and option.onchange is not None:
             try:
                 option.onchange()
@@ -206,7 +241,7 @@ class Options:
         return True
 
     def get_default(self, key):
-        """returns the default value for the key"""
+        """获取特定配置项的默认值 returns the default value for the key"""
 
         data_label = self.data_labels.get(key)
         if data_label is None:
@@ -215,6 +250,7 @@ class Options:
         return data_label.default
 
     def save(self, filename):
+        """将当前的配置数据保存到一个文件中"""
         assert not cmd_opts.freeze_settings, "saving settings is disabled"
 
         with open(filename, "w", encoding="utf8") as file:
@@ -230,6 +266,7 @@ class Options:
         return type_x == type_y
 
     def load(self, filename):
+        """从一个文件中加载配置数据"""
         try:
             with open(filename, "r", encoding="utf8") as file:
                 self.data = json.load(file)
@@ -330,7 +367,8 @@ class Options:
             self.data[key] = info.default
 
     def reorder(self):
-        """Reorder settings so that:
+        """
+        Reorder settings so that:
             - all items related to section always go together
             - all sections belonging to a category go together
             - sections inside a category are ordered alphabetically
